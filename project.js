@@ -1,21 +1,8 @@
-// 1. deposit money from bank-balance
-// 2. choose bet per lines
-// 3. choose lines
-// 4. calculate bet amount
-// 5. spin the wheels
-// 6. determine win
-
 //TODO
- //1.changing balance
- //2. what happens if user has no money left
- //3. play again loop and try to search for break restrictions
-
-// 7. play again
-
-// 8. improve console messages
-// 9. try to change row and cols
-
-
+ // 1.checking balance
+ // 2. what happens if user has no money left
+ // 8. improve console messages
+ // 9. try to change row and cols
 
 // creating prompt method to collect user inputs
 const prompt = require("prompt-sync")()
@@ -34,16 +21,14 @@ const SYMBOLS_AMOUNT = {    // symbols per wheel
     D: 2
 }
 const SYMBOL_MULTIPLIER = { // multiplier per line
-    A: 1,
-    B: 2,
-    C: 4,
-    D: 8
+    A: 4,
+    B: 8,
+    C: 16,
+    D: 30
 }
 
 
-
-
-// 1. deposit function
+// deposit function
 const deposit = () => {
     while (true) {
         const amountStr = prompt("How much money do you want to deposit into your game-account?: $")
@@ -51,12 +36,18 @@ const deposit = () => {
         if (isNaN(amount)|| amount <= 0 || amount > bankBalance) {
             console.log("Invalid input. Please enter a amount that is greater than 0, A NUMBER and less or euqal to your bank balance.")
             console.log("")
-        } else return amount;
-
+        } else {
+            gameBalance += amount
+            bankBalance -= amount
+            console.log("You added $" + amount + " to you game-balance.")
+            console.log("You got $" + bankBalance + " left in your bankaccount")
+            console.log("and $" + gameBalance + " as game-balance.")
+            break
+        }
     }
 }
 
-// 2. chose bet per lines
+// choose bet per lines
 const bet_per_line = () => {
     while (true) {
         const betStr = prompt("Please enter the amount you wanna bet per line on: $")
@@ -67,8 +58,8 @@ const bet_per_line = () => {
     }
 }
 
-// 3. choose lines
-const choose_lines = () => {
+// choose lines
+const choose_lines = (betAmount) => {
     while (true) {
         const linesStr = prompt("How much lines do you wanna bet on?: ")
         const lines = parseInt(linesStr)
@@ -80,12 +71,14 @@ const choose_lines = () => {
     }
 }
 
-// 4. calculate total bet
+// calculate total bet
 const calculate_total_bet = (betPerLine, lines) => {
-    return betPerLine * lines
+    const totatlBet = betPerLine * lines
+    console.log("Your total bet is $" + totatlBet + ". You have $" + (gameBalance - totatlBet) + " game-balance left. ")
+    return totatlBet
 }
 
-// 5.1 spin the wheels
+// spin the wheels
 const spinWheels = () => {
     const slotWheels = [[], [], []]
     const allSymbols = []
@@ -106,7 +99,7 @@ const spinWheels = () => {
     return slotWheels
 }
 
-// 5.2 print the slot
+// print the slot
 const print_spin = (slotWheels) => {
     for (let i = 0; i < rows; i++) {
         let output = []
@@ -120,13 +113,15 @@ const print_spin = (slotWheels) => {
         }
         console.log(output)
     }
+    console.log("")
 }
 
-// 6. determine the potential win
+// determine the potential win
 const determine_win = (spinnedWheels, linesAmount, betPerLine) => {
+    // substract total bet of game-balance
+    gameBalance -= linesAmount * betPerLine
     // initial 0 winnings
     let winnings = 0
-
     // transpose wheels to get started with comparing lines related to winnings
     const lines = [[], [], []]
     for (let i = 0; i < cols; i++) {
@@ -134,13 +129,11 @@ const determine_win = (spinnedWheels, linesAmount, betPerLine) => {
             lines[i].push(spinnedWheels[j][i])
         }
     }
-
     // determine which potential multiplier player gets for chosen lines
     const potentialMultiplierSymbols = []
     for (let i = 0; i < linesAmount; i++) {
         potentialMultiplierSymbols.push(lines[i][0])
     }
-
     // checking if all elements of current line are the same
     for (let i = 0; i < linesAmount; i++ ) {
         let allSame = true
@@ -156,25 +149,127 @@ const determine_win = (spinnedWheels, linesAmount, betPerLine) => {
         }
     }
     // output
-    console.log("You won: $" + winnings + " in total")
+    console.log("You won: $" + winnings + " in total.")
+    gameBalance += winnings
     return winnings
 }
 
+// print status -> balance, lines, bet, total bet ...
+const print_status = (all = false, lines = undefined, betPerLine = undefined) => { // true or false. when true print blance and bet, lines, total bet otherwise false just balance
+    if (all == true) {
+        console.log("--------------------------------------------")
+        console.log("bank-ballance: $" + bankBalance + ".")
+        console.log("game-ballance: $" + gameBalance + ".")
+        console.log("--------------------------------------------")
+        console.log("bet per line: $" + betPerLine + ". lines: " + lines + ". total bet: $" + (betPerLine * lines))
+        console.log("--------------------------------------------")
+    } else {
+        console.log("--------------------------------------------")
+        console.log("bank-ballance: $" + bankBalance + ".")
+        console.log("game-ballance: $" + gameBalance + ".")
+        console.log("--------------------------------------------")
+    }
+}
+
+// check yes or no question related to deposit
+const check_yes_no_deposit = (question, messageNo, execute, condition) => {
+    while (true) {
+        let answer = prompt(question + " (y/n)")
+        if (answer == "y") {
+            execute()
+            console.clear()
+            print_status()
+
+        } else if (answer == "n" && gameBalance != condition) {
+            console.clear()
+            print_status()
+            break
+        } else if (answer == "n" && gameBalance == condition) {
+            console.clear()
+            print_status()
+            console.log(messageNo)
+        } else {
+            console.clear()
+            print_status()
+            console.log("wrong symbol. please choose between y or n.")
+        }
+    }
+    console.clear()
+    print_status()
+}
+
+// check yes or no question related to respin mechanic
+const check_for_respin = (question, messageNo, execute, condition) => {
+    while (true) {
+        let answer = prompt(question + " (y/n)")
+        if (answer == "y") {
+            execute()
+            console.clear()
+            print_status()
+
+        } else if (answer == "n" && gameBalance != condition) {
+            console.clear()
+            print_status()
+            break
+        } else if (answer == "n" && gameBalance == condition) {
+            console.clear()
+            print_status()
+            console.log(messageNo)
+        } else {
+            console.clear()
+            print_status()
+            console.log("wrong symbol. please choose between y or n.")
+        }
+    }
+    console.clear()
+    print_status()
+}
 
 
+// game loop
+while (true) {
+    console.clear()
+    print_status()
+    // adding game-balance
+    check_yes_no_deposit("Do you wanna add some money to your game-balance?", "You have no game-balance left.", deposit , 0)
+    // getting input for amout bet per spin
+    let singleBet = bet_per_line()
+    // getting input for amout of lines
+    let lines = choose_lines(singleBet)
+    // calculation total bet
+    let totalBet = calculate_total_bet(singleBet, lines)
+
+    // respin construct
+    let respin = true
+    while (respin = true) {
+        // print current status
+        console.clear()
+        print_status(true, lines, singleBet)
+        // let the user start the spin
+        prompt("Start the spin by pressing enter!")
+        console.clear()
+        let currSlot = spinWheels()
+        print_spin(currSlot)
+        let win = determine_win(currSlot, lines, singleBet)
+        print_status()
+        // play again?
+        if (gameBalance >= totalBet) {
+            respinStr = prompt("do you wanna spin again with $" + totalBet + " as bet? (y/n)")
+            if (respinStr == "y") {
+                continue
+            } else if (respinStr == "n") {
+                break
+            } else {
+                prompt("wrong symbol. press enter to get to the main menu.")
+                break
+            }
+        } else {
+            console.log("your game-balance ran out of resources for current bet amout: $" + totalBet + ".")
+            prompt("you get back to the deposit menu by pressing enter.")
+            break
+        }
+
+    }
 
 
-// "game loop"
-/*
-gameBalance += deposit()
-let betAmount = bet_per_line()
-let betLines = choose_lines()
-let totalBet = calculate_total_bet(betAmount, betLines)
-console.log("Your total bet is: $" + totalBet)
-
- */
-
-let spin = spinWheels()
-console.log(spin)
-print_spin(spin)
-determine_win(spin, 2, 5)
+}
